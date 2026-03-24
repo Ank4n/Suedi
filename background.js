@@ -223,16 +223,22 @@ async function handleRefresh() {
 
 function handleTimeUpdate(tabId, currentTime) {
   const state = tabState.get(tabId);
-  if (!state || state.cues.length === 0) return;
+  if (!state || state.cues.length === 0) {
+    sendPanelMessage({ type: 'TIME_TICK', currentTime });
+    return;
+  }
 
   const idx = findActiveCue(state.cues, currentTime);
   if (idx !== state.currentCueIndex) {
     state.currentCueIndex = idx;
     if (idx >= 0) {
-      sendPanelMessage({ type: 'CUE_UPDATE', cue: state.cues[idx], cueIndex: idx });
+      sendPanelMessage({ type: 'CUE_UPDATE', cue: state.cues[idx], cueIndex: idx, currentTime });
     } else {
-      sendPanelMessage({ type: 'CUE_CLEAR' });
+      sendPanelMessage({ type: 'CUE_CLEAR', currentTime });
     }
+  } else {
+    // Same cue — still send time so status bar stays live
+    sendPanelMessage({ type: 'TIME_TICK', currentTime });
   }
 }
 

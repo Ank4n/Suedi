@@ -3,7 +3,6 @@
  * Single source of truth for video detection and time tracking on SVT Play.
  */
 
-// Re-entrance guard — prevent double injection
 if (window.__suediLoaded) {
   // Already running, skip
 } else {
@@ -13,13 +12,26 @@ if (window.__suediLoaded) {
   let videoEl = null;
   let throttleTimer = null;
   let videoSearchInterval = null;
+  let backgroundAlive = false; // track if background has our state
 
   function extractSvtId(url) {
-    // Same regex exists in background.js — duplicated because content scripts can't share ES modules
     const match = url.match(/\/video\/([a-zA-Z0-9]+)/);
     if (match) return match[1];
     const match2 = url.match(/\/play\/[^/]+\/([a-zA-Z0-9]+)/);
     return match2 ? match2[1] : null;
+  }
+
+  // Send message with auto-recovery: if background died, re-announce video
+  function safeSend(msg) {
+    chrome.runtime.sendMessage(msg).catch(() => {
+      // Service worker was killed (e.g. during pause). Re-bootstrap it.
+      backgroundAlive = false;
+      if (currentSvtId) {
+        chrome.runtime.sendMessage({ type: 'VIDEO_DETECTED', svtId: currentSvtId }).then(() => {
+          backgroundAlive = true;
+        }).catch(() => {});
+      }
+    });
   }
 
   function onTimeUpdate() {
@@ -27,13 +39,18 @@ if (window.__suediLoaded) {
     throttleTimer = setTimeout(() => {
       throttleTimer = null;
       if (videoEl) {
-        chrome.runtime.sendMessage({
-          type: 'TIME_UPDATE',
-          currentTime: videoEl.currentTime,
-        });
+        safeSend({ type: 'TIME_UPDATE', currentTime: videoEl.currentTime });
       }
     }, 250);
   }
+
+  // Also send time updates while paused (every 2s) to keep the connection alive
+  // and to recover from service worker restarts
+  setInterval(() => {
+    if (videoEl && currentSvtId) {
+      safeSend({ type: 'TIME_UPDATE', currentTime: videoEl.currentTime });
+    }
+  }, 2000);
 
   function attachToVideo(video) {
     if (videoEl === video) return;
@@ -41,7 +58,7 @@ if (window.__suediLoaded) {
     videoEl = video;
     videoEl.addEventListener('timeupdate', onTimeUpdate);
     stopVideoSearch();
-    chrome.runtime.sendMessage({ type: 'DEBUG', message: 'Attached to <video> element' });
+    safeSend({ type: 'DEBUG', message: 'Attached to <video> element' });
   }
 
   function detachVideo() {
@@ -53,18 +70,11 @@ if (window.__suediLoaded) {
 
   function findAndAttachVideo() {
     let video = document.querySelector('video');
-    if (video) {
-      attachToVideo(video);
-      return true;
-    }
-    // Check same-origin iframes
+    if (video) { attachToVideo(video); return true; }
     for (const iframe of document.querySelectorAll('iframe')) {
       try {
         video = iframe.contentDocument?.querySelector('video');
-        if (video) {
-          attachToVideo(video);
-          return true;
-        }
+        if (video) { attachToVideo(video); return true; }
       } catch (e) { /* cross-origin */ }
     }
     return false;
@@ -85,12 +95,10 @@ if (window.__suediLoaded) {
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Poll every 1s as fallback for React async rendering
     videoSearchInterval = setInterval(() => {
       if (findAndAttachVideo()) observer.disconnect();
     }, 1000);
 
-    // Stop after 60s
     setTimeout(() => {
       observer.disconnect();
       stopVideoSearch();
@@ -100,24 +108,27 @@ if (window.__suediLoaded) {
   function init() {
     const svtId = extractSvtId(window.location.href);
     if (!svtId) return;
-    if (svtId === currentSvtId) return;
+    if (svtId === currentSvtId && backgroundAlive) return;
 
     currentSvtId = svtId;
-    chrome.runtime.sendMessage({ type: 'VIDEO_DETECTED', svtId });
+    backgroundAlive = false;
+    chrome.runtime.sendMessage({ type: 'VIDEO_DETECTED', svtId }).then(() => {
+      backgroundAlive = true;
+    }).catch(() => {});
     startVideoSearch();
   }
 
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'URL_CHANGED' || msg.type === 'FORCE_REINIT') {
       currentSvtId = null;
+      backgroundAlive = false;
       detachVideo();
       stopVideoSearch();
       init();
     }
     if (msg.type === 'REQUEST_STATE') {
-      // Background asks us to re-announce ourselves (e.g. after service worker restart)
       if (currentSvtId) {
-        chrome.runtime.sendMessage({ type: 'VIDEO_DETECTED', svtId: currentSvtId });
+        chrome.runtime.sendMessage({ type: 'VIDEO_DETECTED', svtId: currentSvtId }).catch(() => {});
       }
       sendResponse({ svtId: currentSvtId, attached: !!videoEl });
     }
@@ -129,6 +140,7 @@ if (window.__suediLoaded) {
         attached: !!videoEl,
         currentTime: videoEl?.currentTime ?? null,
         paused: videoEl?.paused ?? null,
+        backgroundAlive,
       });
     }
   });
