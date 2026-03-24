@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suedi</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <h1>Suedi</h1>
+      <button id="refresh-btn" title="Refresh">&#x21bb;</button>
+      <button id="debug-toggle-btn" title="Toggle debug">&#x1f41b;</button>
+    </div>
+    <p id="video-title"></p>
+  </header>
+
+  <div id="status">
+    <p>Navigate to an SVT Play video to see subtitles.</p>
+  </div>
+
+  <div id="current-cue" class="hidden"></div>
+
+  <div id="transcript"></div>
+
+  <div id="translation-popup" class="hidden">
+    <div class="popup-word"></div>
+    <div class="popup-translation"></div>
+    <div class="popup-source"></div>
+  </div>
+
+  <div id="debug-panel" class="hidden">
+    <h3>Debug Log</h3>
+    <div id="debug-log"></div>
+    <button id="debug-info-btn">Get Content Script Info</button>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

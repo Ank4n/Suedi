@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Suedi - SVT Play Subtitle Reader",
+  "version": "0.1.0",
+  "description": "Display SVT Play subtitles in a side panel with click-to-translate",
+  "permissions": ["sidePanel", "activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://*.svt.se/*",
+    "https://*.svtplay.se/*",
+    "https://*.akamaized.net/*",
+    "https://api.mymemory.translated.net/*",
+    "https://lingva.ml/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.svtplay.se/video/*",
+        "https://www.svt.se/barnkanalen/*",
+        "https://www.svt.se/play/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "action": {
+    "default_title": "Suedi - SVT Subtitles",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
