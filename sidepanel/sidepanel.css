@@ -69,31 +69,7 @@ header h1 {
   display: none;
 }
 
-#current-cue {
-  background: #2a2a4a;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 12px;
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.6;
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-#current-cue.hidden {
-  display: none;
-}
-
-.time-indicator {
-  font-size: 11px;
-  color: #666;
-  margin-bottom: 4px;
-}
-
+/* Transcript */
 #transcript {
   display: flex;
   flex-direction: column;
@@ -104,21 +80,55 @@ header h1 {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 14px;
-  color: #999;
-  cursor: pointer;
-  transition: background 0.2s;
-  line-height: 1.5;
+  color: #666;
+  cursor: default;
+  transition: background 0.2s, color 0.2s;
+  line-height: 1.6;
+  position: relative;
 }
 
 .transcript-cue.active {
   background: #2a2a4a;
   color: #e0e0e0;
+  font-size: 17px;
+  font-weight: 500;
+  padding: 10px 12px;
+}
+
+.transcript-cue.near {
+  color: #aaa;
 }
 
 .transcript-cue:hover {
   background: #222244;
 }
 
+/* Expand buttons */
+.expand-btn {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  background: none;
+  border: 1px dashed #3a3a6a;
+  border-radius: 4px;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+  margin: 4px 0;
+}
+
+.expand-btn:hover {
+  background: #222244;
+  color: #aaa;
+  border-color: #5a5a8a;
+}
+
+.expand-btn.hidden {
+  display: none;
+}
+
+/* Clickable words */
 .word {
   cursor: pointer;
   border-radius: 3px;
@@ -132,43 +142,33 @@ header h1 {
   color: #fff;
 }
 
-#translation-popup {
-  position: fixed;
-  background: #2c2c54;
-  border: 1px solid #4a4a7a;
-  border-radius: 8px;
-  padding: 12px 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
-  min-width: 140px;
-  max-width: 280px;
+.word.translated {
+  background: #2d4a3d;
+  color: #7fddaa;
+  border-radius: 3px;
 }
 
-#translation-popup.hidden {
-  display: none;
+/* Word wrapper for inline annotation */
+.word-wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: bottom;
 }
 
-.popup-word {
-  font-size: 16px;
-  font-weight: 600;
-  color: #a8b4ff;
-  margin-bottom: 4px;
-}
-
-.popup-translation {
-  font-size: 15px;
-  color: #e0e0e0;
-}
-
-.popup-source {
+.word-annotation {
+  display: block;
+  color: #7fddaa;
   font-size: 11px;
-  color: #666;
-  margin-top: 6px;
+  font-style: italic;
+  line-height: 1.2;
+  white-space: nowrap;
+  animation: fadeIn 0.15s ease-out;
 }
 
-.popup-loading {
-  color: #888;
-  font-style: italic;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Debug panel */

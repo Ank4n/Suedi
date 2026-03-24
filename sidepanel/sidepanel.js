@@ -1,13 +1,21 @@
 const statusEl = document.getElementById('status');
-const currentCueEl = document.getElementById('current-cue');
 const transcriptEl = document.getElementById('transcript');
 const videoTitleEl = document.getElementById('video-title');
-const popupEl = document.getElementById('translation-popup');
+const expandTopBtn = document.getElementById('expand-top');
+const expandBottomBtn = document.getElementById('expand-bottom');
 const debugPanel = document.getElementById('debug-panel');
 const debugLogEl = document.getElementById('debug-log');
 
 let allCues = [];
 let activeCueIndex = -1;
+
+// How many cues to show before/after the active cue
+const CONTEXT_LINES = 3;
+// How many extra lines each expand click reveals
+const EXPAND_STEP = 5;
+// Current expanded range beyond the context window
+let expandedTop = 0;
+let expandedBottom = 0;
 
 function logDebug(msg) {
   const line = document.createElement('div');
@@ -27,38 +35,38 @@ port.onMessage.addListener(msg => {
       allCues = msg.cues;
       videoTitleEl.textContent = msg.title || '';
       logDebug(`Loaded ${msg.cues.length} cues for "${msg.title}"`);
-      renderTranscript();
       statusEl.classList.add('hidden');
-      currentCueEl.classList.remove('hidden');
-      currentCueEl.innerHTML = '<span style="color:#888">Waiting for playback...</span>';
+      expandedTop = 0;
+      expandedBottom = 0;
+      renderVisibleCues();
       break;
 
     case 'CUE_UPDATE':
       activeCueIndex = msg.cueIndex;
-      renderCurrentCue(msg.cue);
-      highlightTranscriptCue(msg.cueIndex);
+      expandedTop = 0;
+      expandedBottom = 0;
+      renderVisibleCues();
       break;
 
     case 'CUE_CLEAR':
       activeCueIndex = -1;
-      currentCueEl.innerHTML = '';
-      clearTranscriptHighlight();
+      renderVisibleCues();
       break;
 
     case 'NO_SUBTITLES':
       videoTitleEl.textContent = msg.title || '';
       showStatus('No subtitles available for this video.');
-      currentCueEl.classList.add('hidden');
       transcriptEl.innerHTML = '';
+      hideExpandButtons();
       logDebug('NO_SUBTITLES received');
       break;
 
     case 'NO_VIDEO':
       showStatus('Navigate to an SVT Play video to see subtitles.');
-      currentCueEl.classList.add('hidden');
       transcriptEl.innerHTML = '';
       videoTitleEl.textContent = '';
       allCues = [];
+      hideExpandButtons();
       logDebug('NO_VIDEO received');
       break;
 
@@ -78,70 +86,83 @@ function showStatus(text) {
   statusEl.classList.remove('hidden');
 }
 
-function renderTranscript() {
+function hideExpandButtons() {
+  expandTopBtn.classList.add('hidden');
+  expandBottomBtn.classList.add('hidden');
+}
+
+function renderVisibleCues() {
   transcriptEl.innerHTML = '';
-  for (let i = 0; i < allCues.length; i++) {
+
+  if (allCues.length === 0) {
+    hideExpandButtons();
+    return;
+  }
+
+  // If no active cue yet, show the first few
+  const center = activeCueIndex >= 0 ? activeCueIndex : 0;
+
+  const windowStart = Math.max(0, center - CONTEXT_LINES - expandedTop);
+  const windowEnd = Math.min(allCues.length - 1, center + CONTEXT_LINES + expandedBottom);
+
+  // Show/hide expand buttons
+  if (windowStart > 0) {
+    expandTopBtn.classList.remove('hidden');
+    expandTopBtn.textContent = `\u25B2 Show earlier (${windowStart} more)`;
+  } else {
+    expandTopBtn.classList.add('hidden');
+  }
+  if (windowEnd < allCues.length - 1) {
+    expandBottomBtn.classList.remove('hidden');
+    expandBottomBtn.textContent = `\u25BC Show later (${allCues.length - 1 - windowEnd} more)`;
+  } else {
+    expandBottomBtn.classList.add('hidden');
+  }
+
+  for (let i = windowStart; i <= windowEnd; i++) {
     const div = document.createElement('div');
     div.className = 'transcript-cue';
     div.dataset.index = i;
-    // Make transcript words clickable too
-    const words = allCues[i].text.split(/(\s+)/);
-    for (const token of words) {
-      if (token.trim() === '') {
-        if (token.includes('\n')) {
-          div.appendChild(document.createTextNode(' '));
-        } else {
-          div.appendChild(document.createTextNode(' '));
-        }
-      } else {
-        const span = document.createElement('span');
-        span.className = 'word';
-        span.textContent = token;
-        span.dataset.word = token;
-        div.appendChild(span);
-      }
+
+    if (i === activeCueIndex) {
+      div.classList.add('active');
+    } else if (activeCueIndex >= 0 && Math.abs(i - activeCueIndex) <= CONTEXT_LINES) {
+      div.classList.add('near');
     }
+
+    // Make words clickable
+    buildClickableWords(div, allCues[i].text);
     transcriptEl.appendChild(div);
+  }
+
+  // Scroll active cue into view
+  const activeEl = transcriptEl.querySelector('.active');
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }
 
-function renderCurrentCue(cue) {
-  currentCueEl.innerHTML = '';
-  const words = cue.text.split(/(\s+)/);
+function buildClickableWords(container, text) {
+  const words = text.split(/(\s+)/);
   for (const token of words) {
     if (token.trim() === '') {
       if (token.includes('\n')) {
-        currentCueEl.appendChild(document.createElement('br'));
+        container.appendChild(document.createTextNode(' '));
       } else {
-        currentCueEl.appendChild(document.createTextNode(' '));
+        container.appendChild(document.createTextNode(' '));
       }
     } else {
       const span = document.createElement('span');
       span.className = 'word';
       span.textContent = token;
       span.dataset.word = token;
-      currentCueEl.appendChild(span);
+      container.appendChild(span);
     }
   }
 }
 
-function highlightTranscriptCue(index) {
-  clearTranscriptHighlight();
-  const el = transcriptEl.querySelector(`[data-index="${index}"]`);
-  if (el) {
-    el.classList.add('active');
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-}
-
-function clearTranscriptHighlight() {
-  const prev = transcriptEl.querySelector('.active');
-  if (prev) prev.classList.remove('active');
-}
-
-// Click handler — translate words, refresh button, debug button
+// Click handler
 document.addEventListener('click', async e => {
-  // Refresh button
   if (e.target.id === 'refresh-btn') {
     logDebug('Refresh clicked');
     showStatus('Refreshing...');
@@ -149,13 +170,11 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Debug toggle
   if (e.target.id === 'debug-toggle-btn') {
     debugPanel.classList.toggle('hidden');
     return;
   }
 
-  // Debug info button
   if (e.target.id === 'debug-info-btn') {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0]) {
@@ -171,49 +190,74 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Word click — translate
-  const wordEl = e.target.closest('.word');
-  if (!wordEl) {
-    hidePopup();
+  if (e.target.id === 'expand-top') {
+    expandedTop += EXPAND_STEP;
+    renderVisibleCues();
     return;
   }
+
+  if (e.target.id === 'expand-bottom') {
+    expandedBottom += EXPAND_STEP;
+    renderVisibleCues();
+    return;
+  }
+
+  // Word click — inline translation above the word
+  const wordEl = e.target.closest('.word');
+  if (!wordEl) return;
 
   const word = wordEl.dataset.word;
   if (!word) return;
 
-  const rect = wordEl.getBoundingClientRect();
-  popupEl.style.left = `${Math.min(rect.left, window.innerWidth - 280)}px`;
-  popupEl.style.top = `${rect.bottom + 8}px`;
+  // If this word already has a translation, toggle it off
+  const wrapper = wordEl.closest('.word-wrapper');
+  if (wrapper) {
+    const annotation = wrapper.querySelector('.word-annotation');
+    if (annotation) {
+      // Unwrap: replace wrapper with just the word span
+      wrapper.replaceWith(wordEl);
+      wordEl.classList.remove('translated');
+      return;
+    }
+  }
 
-  popupEl.querySelector('.popup-word').textContent = word;
-  popupEl.querySelector('.popup-translation').innerHTML = '<span class="popup-loading">Translating...</span>';
-  popupEl.querySelector('.popup-source').textContent = '';
-  popupEl.classList.remove('hidden');
+  // Wrap the word span in a container for positioning
+  const wordWrapper = document.createElement('span');
+  wordWrapper.className = 'word-wrapper';
+
+  const annotation = document.createElement('span');
+  annotation.className = 'word-annotation';
+  annotation.textContent = '...';
+
+  wordEl.classList.add('translated');
+  wordEl.replaceWith(wordWrapper);
+  wordWrapper.appendChild(annotation);
+  wordWrapper.appendChild(wordEl);
 
   logDebug(`Translating: "${word}"`);
 
   try {
     const result = await chrome.runtime.sendMessage({ type: 'TRANSLATE', word });
-    logDebug(`Translation result: ${JSON.stringify(result)}`);
+    logDebug(`Translation: ${JSON.stringify(result)}`);
 
     if (result && result.translation) {
-      popupEl.querySelector('.popup-translation').textContent = result.translation;
-      popupEl.querySelector('.popup-source').textContent = `via ${result.source}`;
+      annotation.textContent = result.translation;
     } else {
-      popupEl.querySelector('.popup-translation').textContent = result?.error || 'Translation unavailable';
-      popupEl.querySelector('.popup-source').textContent = '';
+      annotation.textContent = result?.error || '?';
     }
   } catch (err) {
     logDebug(`Translation error: ${err.message}`);
-    popupEl.querySelector('.popup-translation').textContent = 'Translation failed';
-    popupEl.querySelector('.popup-source').textContent = '';
+    annotation.textContent = '?';
   }
 });
 
-function hidePopup() {
-  popupEl.classList.add('hidden');
-}
+// Expand buttons
+expandTopBtn.addEventListener('click', () => {
+  expandedTop += EXPAND_STEP;
+  renderVisibleCues();
+});
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') hidePopup();
+expandBottomBtn.addEventListener('click', () => {
+  expandedBottom += EXPAND_STEP;
+  renderVisibleCues();
 });
