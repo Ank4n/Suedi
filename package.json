@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "node test/integration/run.js",
+    "test:integration:headed": "node test/integration/run.js --headed"
   },
   "devDependencies": {
+    "puppeteer": "^24.40.0",
     "vitest": "^3.1.1"
   }
 }

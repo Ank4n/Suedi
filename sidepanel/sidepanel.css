@@ -79,6 +79,42 @@ header h1 {
 #sb-state.disconnected { color: #c55; }
 #sb-state.no-video { color: #888; }
 
+/* Freeze banner */
+#freeze-banner {
+  background: #4a1a1a;
+  border: 1px solid #c55;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+#freeze-banner.hidden {
+  display: none;
+}
+
+#freeze-banner p {
+  color: #f0a0a0;
+  font-size: 14px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+#freeze-dismiss {
+  background: #2a2a4a;
+  border: 1px solid #3a3a6a;
+  color: #c0c0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+#freeze-dismiss:hover {
+  background: #3a3a6a;
+}
+
 #status {
   color: #888;
   font-size: 14px;

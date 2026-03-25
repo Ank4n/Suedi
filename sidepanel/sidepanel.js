@@ -8,6 +8,8 @@ const debugLogEl = document.getElementById('debug-log');
 const sbState = document.getElementById('sb-state');
 const sbTime = document.getElementById('sb-time');
 const sbCue = document.getElementById('sb-cue');
+const freezeBanner = document.getElementById('freeze-banner');
+const freezeDismissBtn = document.getElementById('freeze-dismiss');
 
 let allCues = [];
 let activeCueIndex = -1;
@@ -37,6 +39,7 @@ let lastTimeValue = -1;
 
 function updateBar(currentTime) {
   lastTimeTick = Date.now();
+  freezeBanner.classList.add('hidden'); // connection recovered
   sbTime.textContent = formatTime(currentTime);
   sbCue.textContent = activeCueIndex >= 0
     ? `${activeCueIndex + 1}/${allCues.length}`
@@ -54,9 +57,14 @@ function updateBar(currentTime) {
 // Check every 3s if time updates stopped flowing entirely
 staleCheckInterval = setInterval(() => {
   if (allCues.length > 0 && lastTimeTick > 0 && Date.now() - lastTimeTick > 5000) {
-    setBarState('disconnected', 'stale — try refresh');
+    setBarState('disconnected', 'stale');
+    freezeBanner.classList.remove('hidden');
   }
 }, 3000);
+
+freezeDismissBtn.addEventListener('click', () => {
+  freezeBanner.classList.add('hidden');
+});
 
 function logDebug(msg) {
   const line = document.createElement('div');
