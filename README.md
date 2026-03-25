@@ -16,21 +16,25 @@ A Chrome extension that extracts subtitles from [SVT Play](https://www.svtplay.s
 
 ## Install
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/ankan/suedi.git
-   cd suedi
-   ```
+**Option A: Download ZIP (no git required)**
 
-2. Open Chrome and navigate to `chrome://extensions`
+1. Go to the [Suedi GitHub page](https://github.com/ank4n/suedi)
+2. Click the green **Code** button → **Download ZIP**
+3. Unzip the downloaded file
 
-3. Enable **Developer mode** (toggle in the top-right corner)
+**Option B: Clone with git**
 
-4. Click **Load unpacked** and select the `suedi` folder
+```
+git clone https://github.com/ank4n/suedi.git
+```
 
-5. Navigate to any video on [svtplay.se](https://www.svtplay.se) (e.g. `https://www.svtplay.se/video/...`)
+**Then load the extension in Chrome:**
 
-6. Click the Suedi extension icon in the toolbar to open the side panel
+1. Open Chrome and navigate to `chrome://extensions`
+2. Enable **Developer mode** (toggle in the top-right corner)
+3. Click **Load unpacked** and select the `suedi` (or `suedi-master`) folder
+4. Navigate to any video on [svtplay.se](https://www.svtplay.se) (e.g. `https://www.svtplay.se/video/...`)
+5. Click the Suedi extension icon in the toolbar to open the side panel
 
 ## Usage
 
